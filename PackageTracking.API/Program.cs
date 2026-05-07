@@ -66,6 +66,19 @@ namespace PackageTracking.API
                 });
 
             // -------------------------
+            // CORS
+            // -------------------------
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll", policyBuilder =>
+                {
+                    policyBuilder.AllowAnyOrigin()
+                                 .AllowAnyMethod()
+                                 .AllowAnyHeader();
+                });
+            });
+
+            // -------------------------
             // Swagger / OpenAPI
             // -------------------------
             builder.Services.AddOpenApi();
@@ -96,6 +109,8 @@ namespace PackageTracking.API
             }
 
             app.UseHttpsRedirection();
+
+            app.UseCors("AllowAll");
 
             app.UseAuthorization();
 
