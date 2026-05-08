@@ -40,7 +40,7 @@ services:
       - "1433:1433"
     restart: always
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"YourStrong!Passw0rd\" -Q \"SELECT 1\" || exit 1"]
+      test: ["CMD-SHELL", "grep -q ':0599' /proc/net/tcp /proc/net/tcp6 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
