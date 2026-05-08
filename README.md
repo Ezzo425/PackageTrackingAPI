@@ -126,3 +126,15 @@ Recommended production reliability hardening:
 - Frontend-driven API calls: `http://localhost:8080/api/packages`
 - Postman collections can be used with the same endpoints.
 
+## 🌐 Live Cloud Access (AWS)
+The application is currently deployed and publicly accessible via AWS EC2:
+- **Web Dashboard (Customer & Admin):** [http://13.60.190.157:8080](http://13.60.190.157:8080)
+- **API Swagger Documentation:** [http://13.60.190.157:5001/swagger](http://13.60.190.157:5001/swagger)
+
+## 🛠️ Troubleshooting & Architecture Notes
+- **502 Bad Gateway / Database Connection Issues:** Standard Microsoft SQL Server containers require a minimum of 2GB of RAM, which causes silent crashes on standard free-tier/micro cloud instances. To ensure maximum reliability and lower infrastructure costs, this project utilizes **Azure SQL Edge** (`mcr.microsoft.com/azure-sql-edge`), an official, lightweight SQL engine optimized for containers with a ~500MB memory footprint.
+- **Startup Order:** The `docker-compose.yml` implements dependency gating. The API will wait to boot until the SQL container passes its internal healthcheck ping.
+
+## ⚙️ CI/CD Pipeline
+This project includes automated Continuous Integration via **GitHub Actions**. Upon every push to the `main` branch, the pipeline automatically restores .NET dependencies, compiles the C# codebase in Release mode, and validates the Docker Compose build process.
+

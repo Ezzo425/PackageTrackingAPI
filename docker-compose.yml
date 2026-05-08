@@ -7,12 +7,17 @@ services:
     ports:
       - "5001:8080"
     depends_on:
-      - sqlserver
-    restart: unless-stopped
+      sqlserver:
+        condition: service_healthy
+    restart: always
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=PackageTrackingDB;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   frontend:
     build:
@@ -22,6 +27,7 @@ services:
       - "8080:80"
     depends_on:
       - api
+    restart: always
 
   sqlserver:
     image: mcr.microsoft.com/azure-sql-edge:latest
@@ -32,3 +38,10 @@ services:
       MSSQL_PID: "Developer"
     ports:
       - "1433:1433"
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"YourStrong!Passw0rd\" -Q \"SELECT 1\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
