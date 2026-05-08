@@ -1,89 +1,128 @@
-# 📦 Package Tracking API
+# Package Tracking API
 
-A backend-only RESTful API built with ASP.NET Core Web API that simulates a real-world logistics system for tracking package deliveries.
+RESTful package tracking system built with ASP.NET Core. It solves a real logistics problem: creating packages, tracking them by ID/tracking number, and updating delivery lifecycle and location.
 
-The system allows creating, updating, and tracking packages using a unique tracking number.
+## Features
 
----
+- Create, read, update, and delete package records (CRUD)
+- Track package by tracking number
+- Web frontend + backend API
+- Swagger/OpenAPI for testing
+- Dockerized multi-service deployment
 
-## 🚀 Features
-
-- Create new packages
-- Track packages using tracking number
-- Update package status and location
-- Delete packages
-- Get all packages
-- Get package by ID
-- RESTful API design
-- Docker support
-- SQL Server database (Dockerized)
-
----
-
-## 🧱 Tech Stack
+## Tech Stack
 
 - ASP.NET Core Web API (.NET 9)
 - Entity Framework Core (Code First)
-- Azure SQL Edge (Docker container, low-memory SQL Server-compatible engine)
-- Docker & Docker Compose
-- Swagger for API testing
+- Azure SQL Edge (low-memory SQL Server-compatible engine)
+- Nginx static frontend + API reverse proxy
+- Docker / Docker Compose
+- Serilog logging
 
----
+## Project Structure
 
-## 📦 Project Structure
-PackageTrackingSystem/
-│
-├── PackageTracking.API/
-│ ├── Controllers/
-│ ├── Models/
-│ ├── DTOs/
-│ ├── Services/
-│ ├── Repositories/
-│ ├── Data/
-│ ├── Mappings/
-│ ├── Middleware/
-│
-├── docker-compose.yml
-├── Dockerfile
-└── PackageTrackingSystem.sln
+- `PackageTracking.API/` - backend API
+- `Frontend/` - static web UI served by nginx
+- `docker-compose.yml` - local and single-host orchestration
+- `PackageTracking.API/Dockerfile` - backend container
+- `Frontend/Dockerfile` - frontend container
 
----
+## Run Locally (Docker)
 
-## 🐳 How to Run the Project (Docker)
-
-### 1️⃣ Clone the repository
+1. Clone the repository:
 
 ```bash
 git clone https://github.com/Ezzo425/PackageTrackingAPI.git
 cd PackageTrackingAPI
+```
 
----
-2️⃣ Run with Docker Compose
+2. Build and run:
 
-Make sure Docker Desktop is running, then:
+```bash
+docker compose up --build -d
+```
 
-docker compose up --build
-3️⃣ Open the API
+3. Access services:
 
-Once running, open:
+- Frontend: `http://localhost:8080`
+- API via frontend proxy: `http://localhost:8080/api/packages`
+- API Swagger: `http://localhost:5001/swagger`
 
-http://localhost:5001/swagger
+4. Stop services:
 
-🧪 How to Test the API
+```bash
+docker compose down
+```
 
-You can use:
+## API Endpoints
 
-Swagger UI 
-Postman
+- `POST /api/packages` - create package
+- `GET /api/packages` - list packages
+- `GET /api/packages/{id}` - get package by ID
+- `GET /api/packages/tracking/{trackingNumber}` - track package
+- `PUT /api/packages/{id}` - update package
+- `DELETE /api/packages/{id}` - delete package
 
----
-📌 Main Endpoints
-📦 Packages
-Method	Endpoint	                            Description
-POST	/api/packages	                          Create a new package
-GET	/api/packages                             Get all packages
-GET	/api/packages/{id}	                      Get package by ID
-GET	/api/packages/tracking/{trackingNumber}	  Track package
-PUT	/api/packages/{id}	                      Update package
-DELETE	/api/packages/{id}	                  Delete package
+## AWS Deployment (EC2)
+
+This project is designed to run on AWS EC2 using Docker Compose.
+
+1. Launch an EC2 instance (Ubuntu recommended).
+2. Install Docker and Docker Compose plugin.
+3. Open inbound ports in Security Group:
+   - `8080` for frontend/API public access
+   - `22` for SSH
+4. Clone project on EC2 and run:
+
+```bash
+docker compose up --build -d
+```
+
+5. Access publicly:
+
+- `http://<EC2_PUBLIC_IP>:8080`
+- `http://<EC2_PUBLIC_IP>:8080/api/packages`
+
+## Scalability Strategy (Basic)
+
+Current state: containerized services with clean service separation (`frontend`, `api`, `sqlserver`) to enable horizontal/vertical growth.
+
+Planned/ready scaling path on AWS:
+
+- Move from single EC2 host to ECS/Fargate for API/frontend
+- Add Application Load Balancer in front of frontend/API
+- Run multiple API task replicas behind ALB
+- Enable ECS Auto Scaling (CPU/Memory target tracking)
+- Move database from container to Amazon RDS SQL Server/Aurora for managed scale and durability
+
+This demonstrates basic scalability understanding and a practical migration path.
+
+## Reliability Strategy
+
+Reliability improvements already applied:
+
+- Switched DB container to Azure SQL Edge for low-memory environments
+- API has SQL retry policy (`EnableRetryOnFailure`)
+- API startup retries migrations before failing
+- `restart: unless-stopped` on API service
+- Centralized error middleware for consistent failures
+- Serilog console/file logging for diagnosis
+
+Recommended production reliability hardening:
+
+- Use EC2 instance with enough memory (>=2 GB for full SQL Server, lower with SQL Edge)
+- Add health checks for API/DB and monitor restarts
+- Use managed DB (RDS) to avoid DB container resource crashes
+- Configure CloudWatch alarms for container failures and high memory usage
+
+## Error Handling and Logging
+
+- Global exception middleware: `PackageTracking.API/Middleware/ErrorHandlingMiddleware.cs`
+- Structured logging with Serilog in `Program.cs` (console + rolling file logs)
+
+## Testing the API
+
+- Swagger UI: `http://localhost:5001/swagger`
+- Frontend-driven API calls: `http://localhost:8080/api/packages`
+- Postman collections can be used with the same endpoints.
 
