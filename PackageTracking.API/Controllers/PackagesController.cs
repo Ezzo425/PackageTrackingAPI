@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using PackageTracking.API.DTOs;
 using PackageTracking.API.Mappings;
+using PackageTracking.API.Models;
 using PackageTracking.API.Services;
 using Serilog;
 
@@ -37,36 +38,50 @@ namespace PackageTracking.API.Controllers
 
             var package = await _service.GetPackageByIdAsync(id);
 
-            if (package == null)
+            if (package is { } found)
             {
-                Log.Warning("Package with ID {Id} not found", id);
-                return NotFound(new { message = "Package not found" });
+                return Ok(PackageMapping.ToDto(found));
             }
 
-            return Ok(PackageMapping.ToDto(package));
+            Log.Warning("Package with ID {Id} not found", id);
+            return NotFound(new { message = "Package not found" });
         }
 
         // GET: api/packages/tracking/{trackingNumber}
         [HttpGet("tracking/{trackingNumber}")]
-        public async Task<IActionResult> GetByTracking(string trackingNumber)
+        public async Task<IActionResult> GetByTracking(string? trackingNumber)
         {
+            trackingNumber = (trackingNumber ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(trackingNumber))
+            {
+                return BadRequest(new { message = "Tracking number is required." });
+            }
+
             Log.Information("Fetching package with Tracking Number: {TrackingNumber}", trackingNumber);
 
             var package = await _service.GetByTrackingNumberAsync(trackingNumber);
 
-            if (package == null)
+            if (package is { } found)
             {
-                Log.Warning("Package with Tracking Number {TrackingNumber} not found", trackingNumber);
-                return NotFound(new { message = "Package not found" });
+                return Ok(PackageMapping.ToDto(found));
             }
 
-            return Ok(PackageMapping.ToDto(package));
+            Log.Warning("Package with Tracking Number {TrackingNumber} not found", trackingNumber);
+            return NotFound(new { message = "Package not found" });
         }
 
         // POST: api/packages
         [HttpPost]
         public async Task<IActionResult> Create(CreatePackageDto dto)
         {
+            NormalizeStrings(dto);
+            if (string.IsNullOrEmpty(dto.SenderName))
+                ModelState.AddModelError(nameof(dto.SenderName), "Sender name is required.");
+            if (string.IsNullOrEmpty(dto.ReceiverName))
+                ModelState.AddModelError(nameof(dto.ReceiverName), "Receiver name is required.");
+            if (string.IsNullOrEmpty(dto.CurrentLocation))
+                ModelState.AddModelError(nameof(dto.CurrentLocation), "Current location is required.");
+
             Log.Information("Creating new package for Sender: {Sender}", dto.SenderName);
 
             if (!ModelState.IsValid)
@@ -95,6 +110,14 @@ namespace PackageTracking.API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, UpdatePackageDto dto)
         {
+            NormalizeStrings(dto);
+            if (string.IsNullOrEmpty(dto.SenderName))
+                ModelState.AddModelError(nameof(dto.SenderName), "Sender name is required.");
+            if (string.IsNullOrEmpty(dto.ReceiverName))
+                ModelState.AddModelError(nameof(dto.ReceiverName), "Receiver name is required.");
+            if (string.IsNullOrEmpty(dto.CurrentLocation))
+                ModelState.AddModelError(nameof(dto.CurrentLocation), "Current location is required.");
+
             Log.Information("Updating package with ID: {Id}", id);
 
             if (!ModelState.IsValid)
@@ -103,7 +126,7 @@ namespace PackageTracking.API.Controllers
                 return BadRequest(ModelState);
             }
 
-            var package = new Models.Package
+            var package = new Package
             {
                 SenderName = dto.SenderName,
                 ReceiverName = dto.ReceiverName,
@@ -142,6 +165,20 @@ namespace PackageTracking.API.Controllers
             Log.Information("Package deleted successfully with ID: {Id}", id);
 
             return NoContent();
+        }
+
+        private static void NormalizeStrings(CreatePackageDto dto)
+        {
+            dto.SenderName = dto.SenderName.Trim();
+            dto.ReceiverName = dto.ReceiverName.Trim();
+            dto.CurrentLocation = dto.CurrentLocation.Trim();
+        }
+
+        private static void NormalizeStrings(UpdatePackageDto dto)
+        {
+            dto.SenderName = dto.SenderName.Trim();
+            dto.ReceiverName = dto.ReceiverName.Trim();
+            dto.CurrentLocation = dto.CurrentLocation.Trim();
         }
     }
 }

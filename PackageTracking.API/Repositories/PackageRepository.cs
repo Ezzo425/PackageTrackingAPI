@@ -18,12 +18,12 @@ namespace PackageTracking.API.Repositories
             return await _context.Packages.ToListAsync();
         }
 
-        public async Task<Package> GetByIdAsync(int id)
+        public async Task<Package?> GetByIdAsync(int id)
         {
             return await _context.Packages.FindAsync(id);
         }
 
-        public async Task<Package> GetByTrackingNumberAsync(string trackingNumber)
+        public async Task<Package?> GetByTrackingNumberAsync(string trackingNumber)
         {
             return await _context.Packages
                 .FirstOrDefaultAsync(p => p.TrackingNumber == trackingNumber);

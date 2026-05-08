@@ -5,13 +5,16 @@ namespace PackageTracking.API.DTOs
     public class CreatePackageDto
     {
         [Required]
-        public string SenderName { get; set; }
+        [MaxLength(100)]
+        public string SenderName { get; set; } = string.Empty;
 
         [Required]
-        public string ReceiverName { get; set; }
+        [MaxLength(100)]
+        public string ReceiverName { get; set; } = string.Empty;
 
         [Required]
-        public string CurrentLocation { get; set; }
+        [MaxLength(150)]
+        public string CurrentLocation { get; set; } = string.Empty;
 
         public DateTime? EstimatedDeliveryDate { get; set; }
     }

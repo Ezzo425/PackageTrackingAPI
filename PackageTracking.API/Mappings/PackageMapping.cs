@@ -3,13 +3,13 @@ using PackageTracking.API.Models;
 
 namespace PackageTracking.API.Mappings
 {
-    public class PackageMapping
+    public static class PackageMapping
     {
         public static PackageDto ToDto(Package package)
         {
             return new PackageDto
             {
-                Id = package.Id, // Id of the dto is the same as the entity
+                Id = package.Id,
                 TrackingNumber = package.TrackingNumber,
                 SenderName = package.SenderName,
                 ReceiverName = package.ReceiverName,
@@ -24,6 +24,7 @@ namespace PackageTracking.API.Mappings
         {
             return new Package
             {
+                TrackingNumber = string.Empty,
                 SenderName = dto.SenderName,
                 ReceiverName = dto.ReceiverName,
                 CurrentLocation = dto.CurrentLocation,
