@@ -24,7 +24,7 @@ The system allows creating, updating, and tracking packages using a unique track
 
 - ASP.NET Core Web API (.NET 9)
 - Entity Framework Core (Code First)
-- SQL Server (Docker container)
+- Azure SQL Edge (Docker container, low-memory SQL Server-compatible engine)
 - Docker & Docker Compose
 - Swagger for API testing
 
