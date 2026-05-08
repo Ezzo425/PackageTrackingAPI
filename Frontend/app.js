@@ -1,6 +1,13 @@
-const API_BASE_URL = 'http://13.53.67.121:5001/api/packages';
-const DEFAULT_API_BASE = API_BASE_URL;
-const STORAGE_KEY = 'packageTrackerApiBase';
+/** Same-origin default when served behind Frontend/nginx proxy (Docker:8080 → api:8080). */
+function getDefaultApiBase() {
+    if (typeof window !== 'undefined' && window.location?.origin) {
+        return `${window.location.origin}/api/packages`;
+    }
+    return '/api/packages';
+}
+
+const DEFAULT_API_BASE = getDefaultApiBase();
+const STORAGE_KEY = 'packageTrackerApiBase_v2';
 
 const STATUS_OPTIONS = [
     { value: 'Created', label: 'Created' },
@@ -410,7 +417,13 @@ async function loadAllPackages() {
         }
         renderPackagesTable(data);
     } catch {
-        tableBody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">${escapeHtml('Could not connect to the API. Check the base URL (production: http://13.53.67.121:5001/api/packages) and that the API is running.')}</td></tr>`;
+        const tried = getApiBase();
+        const msg =
+            `Could not connect to the API (${tried}). ` +
+            'If you use Docker on AWS, set the API base to ' +
+            `${window.location?.origin ?? ''}/api/packages (same host as this page) so traffic goes through port 8080. ` +
+            'Direct calls to port 5001 often fail unless that port is open in the security group.';
+        tableBody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">${escapeHtml(msg)}</td></tr>`;
     }
 }
 
