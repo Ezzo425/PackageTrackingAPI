@@ -1,140 +1,210 @@
 # Package Tracking API
 
-RESTful package tracking system built with ASP.NET Core. It solves a real logistics problem: creating packages, tracking them by ID/tracking number, and updating delivery lifecycle and location.
+A full-stack package tracking system for logistics workflows. The project solves a real-world problem: managing package records and tracking delivery lifecycle/status through a public web interface and REST API.
 
-## Features
+## Project Objectives
 
-- Create, read, update, and delete package records (CRUD)
-- Track package by tracking number
-- Web frontend + backend API
-- Swagger/OpenAPI for testing
-- Dockerized multi-service deployment
+- Build a clear logistics use case with CRUD operations.
+- Provide both user-facing UI and testable API endpoints.
+- Use persistent database storage.
+- Deploy publicly on AWS.
+- Containerize the whole stack for repeatable environments.
+- Demonstrate reliability/scalability understanding.
+
+## Core Functionality
+
+- Create package records with sender/receiver/location.
+- Read all packages, by ID, or by tracking number.
+- Update package status/location/estimated delivery.
+- Delete package records.
+- Track package progress from the frontend dashboard.
+
+## Architecture Overview
+
+Current runtime is a 3-service container stack:
+
+- `frontend` (Nginx): serves static UI and proxies `/api/*` to backend.
+- `api` (ASP.NET Core): business logic + REST API.
+- `sqlserver` (Azure SQL Edge): relational persistence layer.
+
+Request flow:
+
+1. Browser calls `http://<host>:8080`.
+2. Nginx serves UI assets and forwards `/api/*` traffic to `api:8080`.
+3. API reads/writes package data in SQL Edge via EF Core.
 
 ## Tech Stack
 
 - ASP.NET Core Web API (.NET 9)
-- Entity Framework Core (Code First)
-- Azure SQL Edge (low-memory SQL Server-compatible engine)
-- Nginx static frontend + API reverse proxy
-- Docker / Docker Compose
-- Serilog logging
+- Entity Framework Core (Code First + migrations)
+- Azure SQL Edge (SQL Server-compatible, low memory footprint)
+- Nginx (reverse proxy + static host)
+- Docker + Docker Compose
+- Serilog (console + rolling file logs)
+- GitHub Actions (CI build validation)
 
 ## Project Structure
 
-- `PackageTracking.API/` - backend API
-- `Frontend/` - static web UI served by nginx
-- `docker-compose.yml` - local and single-host orchestration
-- `PackageTracking.API/Dockerfile` - backend container
-- `Frontend/Dockerfile` - frontend container
+- `PackageTracking.API/` - backend source code
+  - `Controllers/` - HTTP endpoints
+  - `Services/` - business logic
+  - `Repositories/` - data access
+  - `Models/`, `DTOs/`, `Mappings/` - domain and transfer models
+  - `Middleware/` - centralized exception handling
+  - `Migrations/` - EF migration history
+- `Frontend/` - web UI (HTML/JS) and Nginx config
+- `docker-compose.yml` - orchestration for frontend/api/db
+- `PackageTracking.API/Dockerfile` - backend container image
+- `Frontend/Dockerfile` - frontend container image
+- `.github/workflows/ci.yml` - CI pipeline
+- `Project_Report.md` - final project report
 
-## Run Locally (Docker)
+## API Endpoints (CRUD + tracking)
 
-1. Clone the repository:
+- `POST /api/packages` - create package
+- `GET /api/packages` - list all packages
+- `GET /api/packages/{id}` - get by ID
+- `GET /api/packages/tracking/{trackingNumber}` - track by tracking number
+- `PUT /api/packages/{id}` - update package
+- `DELETE /api/packages/{id}` - delete package
+
+Use Swagger or Postman to test these endpoints.
+
+## Run Locally
+
+### Prerequisites
+
+- Docker Engine / Docker Desktop
+- Docker Compose plugin
+
+### Start
 
 ```bash
 git clone https://github.com/Ezzo425/PackageTrackingAPI.git
 cd PackageTrackingAPI
-```
-
-2. Build and run:
-
-```bash
 docker compose up --build -d
 ```
 
-3. Access services:
+### Access
 
 - Frontend: `http://localhost:8080`
-- API via frontend proxy: `http://localhost:8080/api/packages`
-- API Swagger: `http://localhost:5001/swagger`
+- API through frontend proxy: `http://localhost:8080/api/packages`
+- Swagger: `http://localhost:5001/swagger`
 
-4. Stop services:
+### Stop
 
 ```bash
 docker compose down
 ```
 
-## API Endpoints
-
-- `POST /api/packages` - create package
-- `GET /api/packages` - list packages
-- `GET /api/packages/{id}` - get package by ID
-- `GET /api/packages/tracking/{trackingNumber}` - track package
-- `PUT /api/packages/{id}` - update package
-- `DELETE /api/packages/{id}` - delete package
-
 ## AWS Deployment (EC2)
 
-This project is designed to run on AWS EC2 using Docker Compose.
+### Services Used
 
-1. Launch an EC2 instance (Ubuntu recommended).
-2. Install Docker and Docker Compose plugin.
-3. Open inbound ports in Security Group:
-   - `8080` for frontend/API public access
-   - `22` for SSH
-4. Clone project on EC2 and run:
+- Amazon EC2 (compute host)
+- AWS Security Groups (network access control)
+- Public IPv4 (internet access to app)
+
+### Deployment Steps
+
+1. Launch Ubuntu EC2 instance.
+2. Install Docker + Compose plugin.
+3. Open inbound ports:
+   - `22` (SSH)
+   - `8080` (frontend + proxied API)
+   - `5001` (optional direct Swagger/API)
+4. Clone repo on EC2 and start stack:
 
 ```bash
+git clone https://github.com/Ezzo425/PackageTrackingAPI.git
+cd PackageTrackingAPI
 docker compose up --build -d
 ```
 
-5. Access publicly:
+5. Validate:
 
-- `http://<EC2_PUBLIC_IP>:8080`
-- `http://<EC2_PUBLIC_IP>:8080/api/packages`
+```bash
+docker compose ps
+curl -i http://localhost:8080/api/packages
+```
 
-## Scalability Strategy (Basic)
+## Live Cloud Access (AWS)
 
-Current state: containerized services with clean service separation (`frontend`, `api`, `sqlserver`) to enable horizontal/vertical growth.
+- Web app: [http://13.53.67.121:8080](http://13.53.67.121:8080)
+- API (proxy path): [http://13.53.67.121:8080/api/packages](http://13.53.67.121:8080/api/packages)
+- Swagger (direct API): [http://13.53.67.121:5001/swagger](http://13.53.67.121:5001/swagger)
 
-Planned/ready scaling path on AWS:
+## Reliability Measures Implemented
 
-- Move from single EC2 host to ECS/Fargate for API/frontend
-- Add Application Load Balancer in front of frontend/API
-- Run multiple API task replicas behind ALB
-- Enable ECS Auto Scaling (CPU/Memory target tracking)
-- Move database from container to Amazon RDS SQL Server/Aurora for managed scale and durability
+- Database service healthcheck (`sqlcmd SELECT 1`).
+- Startup dependency gating (`api` waits for healthy DB).
+- Automatic restart policy (`restart: always`) for all services.
+- API startup migration retry loop in `Program.cs`.
+- EF Core SQL transient retry (`EnableRetryOnFailure`).
+- Centralized exception middleware for consistent API failures.
+- Structured logging via Serilog.
 
-This demonstrates basic scalability understanding and a practical migration path.
+## Scalability Measures and Path
 
-## Reliability Strategy
+Current:
 
-Reliability improvements already applied:
+- Clear service separation (`frontend`, `api`, `sqlserver`).
+- Stateless API architecture suitable for horizontal scaling.
+- Basic container memory limit for API (`512M`) to protect host.
 
-- Switched DB container to Azure SQL Edge for low-memory environments
-- API has SQL retry policy (`EnableRetryOnFailure`)
-- API startup retries migrations before failing
-- `restart: unless-stopped` on API service
-- Centralized error middleware for consistent failures
-- Serilog console/file logging for diagnosis
+Next production steps:
 
-Recommended production reliability hardening:
-
-- Use EC2 instance with enough memory (>=2 GB for full SQL Server, lower with SQL Edge)
-- Add health checks for API/DB and monitor restarts
-- Use managed DB (RDS) to avoid DB container resource crashes
-- Configure CloudWatch alarms for container failures and high memory usage
+- Move API/frontend to ECS Fargate tasks.
+- Put Application Load Balancer in front of API/frontend.
+- Configure autoscaling based on CPU/memory.
+- Migrate DB from container to Amazon RDS for durability and managed scaling.
 
 ## Error Handling and Logging
 
-- Global exception middleware: `PackageTracking.API/Middleware/ErrorHandlingMiddleware.cs`
-- Structured logging with Serilog in `Program.cs` (console + rolling file logs)
+- Global exception middleware:
+  - `PackageTracking.API/Middleware/ErrorHandlingMiddleware.cs`
+- Structured startup/request logs:
+  - `PackageTracking.API/Program.cs`
+- Useful controller-level informational and warning logs:
+  - `PackageTracking.API/Controllers/PackagesController.cs`
 
-## Testing the API
+## CI/CD (Optional Bonus)
 
-- Swagger UI: `http://localhost:5001/swagger`
-- Frontend-driven API calls: `http://localhost:8080/api/packages`
-- Postman collections can be used with the same endpoints.
+GitHub Actions workflow at `.github/workflows/ci.yml`:
 
-## 🌐 Live Cloud Access (AWS)
-The application is currently deployed and publicly accessible via AWS EC2:
-- **Web Dashboard (Customer & Admin):** [http://13.60.190.157:8080](http://13.60.190.157:8080)
-- **API Swagger Documentation:** [http://13.60.190.157:5001/swagger](http://13.60.190.157:5001/swagger)
+- triggers on push/PR to `main`
+- restores/builds .NET API
+- validates Docker Compose build
 
-## 🛠️ Troubleshooting & Architecture Notes
-- **502 Bad Gateway / Database Connection Issues:** Standard Microsoft SQL Server containers require a minimum of 2GB of RAM, which causes silent crashes on standard free-tier/micro cloud instances. To ensure maximum reliability and lower infrastructure costs, this project utilizes **Azure SQL Edge** (`mcr.microsoft.com/azure-sql-edge`), an official, lightweight SQL engine optimized for containers with a ~500MB memory footprint.
-- **Startup Order:** The `docker-compose.yml` implements dependency gating. The API will wait to boot until the SQL container passes its internal healthcheck ping.
+## Troubleshooting
 
-## ⚙️ CI/CD Pipeline
-This project includes automated Continuous Integration via **GitHub Actions**. Upon every push to the `main` branch, the pipeline automatically restores .NET dependencies, compiles the C# codebase in Release mode, and validates the Docker Compose build process.
+- **502 Bad Gateway on `:8080`**
+  - Check `docker compose ps` and ensure `api` is running.
+  - Check frontend logs for upstream connection errors.
+- **API connection refused on `:5001`**
+  - API container is restarting/not ready; check `docker compose logs api`.
+- **DB startup failures on small EC2**
+  - SQL Server 2022 image requires ~2GB RAM.
+  - This project uses Azure SQL Edge for lower-memory compatibility.
+- **Security Group blocks access**
+  - Ensure inbound rule exists for `8080` (and `5001` if needed).
+
+## Requirement Coverage (Checklist)
+
+- Real-world functionality: package logistics tracking.
+- User-facing interface: web frontend + REST API.
+- Backend service: ASP.NET Core REST API.
+- Persistent DB: Azure SQL Edge.
+- CRUD: fully implemented.
+- AWS deployment: EC2 + Security Groups.
+- Public access: browser/API endpoints.
+- Dockerization: Dockerfiles + Compose.
+- Local run command: `docker compose up --build`.
+- Reliability/scalability: implemented controls + documented roadmap.
+
+## Known Limitations
+
+- Compose `deploy.resources` limits are strongest in Swarm; non-Swarm Compose behavior can vary by environment.
+- Database is still containerized in current environment; RDS is recommended for stronger production reliability.
+- No authentication layer yet (optional enhancement).
 

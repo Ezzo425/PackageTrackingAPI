@@ -1,22 +1,123 @@
 # Cloud Development Final Project Report
+
 **Project:** Logistics Package Tracking System
 
-## 1. Project Idea and Objectives
-The objective of this project is to provide a robust, cloud-native backend and visual dashboard for a logistics company. The system solves the real-world problem of package tracking by allowing administrators to create, update, and route packages, while enabling customers to track their deliveries in real-time using a unique tracking number.
+## 1) Project Idea and Objectives
 
-## 2. Architecture & Cloud Services Used
-The application utilizes a microservices-inspired architecture:
-- **Amazon EC2 (t3.small):** Acts as the primary compute instance hosting the Docker engine.
-- **AWS Security Groups:** Configured as a virtual firewall to allow public access on ports 8080 (Frontend) and 5001 (API), while restricting SSH (22) for administration.
-- **Containers:** The stack is fully Dockerized, decoupling the Nginx Web Server, the ASP.NET Core API, and the Azure SQL Edge database.
+This project addresses a real logistics need: managing and tracking shipments in one system.  
+The goal is to provide:
 
-## 3. Deployment Steps
-1. Provisioned an Ubuntu EC2 instance on AWS and attached an auto-assigned Public IP.
-2. Configured AWS Security Groups to expose TCP ports 8080 and 5001 to `0.0.0.0/0`.
-3. Connected to the instance via SSH and installed Docker and Docker Compose plugin.
-4. Cloned the repository directly to the EC2 instance environment.
-5. Executed `docker compose up -d --build` to pull images, apply Entity Framework Code-First migrations, and detach the processes to run in the background.
+- a user-facing dashboard for package operations,
+- a documented REST API for integration/testing,
+- persistent storage for package lifecycle data,
+- cloud deployment accessible to the public.
 
-## 4. Scalability & Reliability Strategy
-- **Reliability:** The system utilizes Docker container healthchecks. The API container includes a `depends_on: condition: service_healthy` block, ensuring the API does not boot until the SQL database is fully initialized, completely eliminating startup crash loops. All containers utilize `restart: always` policies to automatically recover from unexpected host reboots.
-- **Scalability:** The API is completely stateless, meaning it is designed to be horizontally scaled. While currently running as a single replica, the system can be scaled by updating the compose file to include multiple API replicas behind a load balancer. Furthermore, memory limits (`512M`) are explicitly defined in the docker-compose file to prevent resource starvation on the host node.
+The solution supports package creation, tracking by number, status/location updates, and record cleanup (CRUD).
+
+## 2) System Architecture and Services Used
+
+### Application Architecture
+
+The application uses a 3-container architecture:
+
+- **Frontend container (Nginx)**  
+  Hosts static web UI and proxies `/api/*` requests to backend.
+- **Backend container (ASP.NET Core API)**  
+  Exposes REST endpoints and business rules.
+- **Database container (Azure SQL Edge)**  
+  Stores package data persistently using relational schema managed by EF Core migrations.
+
+### AWS Services Used
+
+- **Amazon EC2** (Ubuntu host for Docker runtime)
+- **AWS Security Groups** (network firewall rules)
+- **Public IPv4 endpoint** (public browser/API access)
+
+## 3) Deployment Steps (AWS EC2)
+
+1. Provision Ubuntu EC2 instance.
+2. Configure Security Group inbound rules:
+   - `22` (SSH)
+   - `8080` (frontend + proxied API)
+   - `5001` (optional direct API/Swagger)
+3. Install Docker and Docker Compose plugin.
+4. Clone repository on EC2:
+   - `git clone https://github.com/Ezzo425/PackageTrackingAPI.git`
+5. Start stack:
+   - `docker compose up -d --build`
+6. Validate health:
+   - `docker compose ps`
+   - `curl -i http://localhost:8080/api/packages`
+
+## 4) Functional Coverage
+
+Implemented features:
+
+- **Create:** `POST /api/packages`
+- **Read:** `GET /api/packages`, `GET /api/packages/{id}`, `GET /api/packages/tracking/{trackingNumber}`
+- **Update:** `PUT /api/packages/{id}`
+- **Delete:** `DELETE /api/packages/{id}`
+
+User-facing access:
+
+- Web dashboard on port `8080`
+- Swagger documentation on port `5001`
+- Postman-compatible REST endpoints
+
+## 5) Reliability Strategy (Implemented)
+
+Reliability controls included in the project:
+
+- DB healthcheck in Compose (`sqlcmd SELECT 1`)
+- API startup gated on healthy DB (`depends_on.condition: service_healthy`)
+- Restart policy for all services (`restart: always`)
+- EF Core transient SQL retry policy (`EnableRetryOnFailure`)
+- Startup migration retry loop in API (`ApplyMigrations` retries)
+- Centralized error middleware for stable error responses
+- Serilog logging to console and file
+
+Impact:
+
+- Prevents startup race conditions between API and DB
+- Reduces crash loops and recovers from temporary failures/reboots
+
+## 6) Scalability Strategy (Current + Roadmap)
+
+Current scalability foundations:
+
+- Stateless API service design
+- Service separation (frontend/api/db)
+- Basic container resource protection (`memory: 512M` for API)
+
+Planned scaling path:
+
+1. Move workloads to ECS/Fargate
+2. Add Application Load Balancer
+3. Scale API replicas horizontally
+4. Enable autoscaling policies
+5. Move DB to Amazon RDS for managed scale and availability
+
+## 7) Monitoring, CI, and Operational Practices
+
+- **CI pipeline:** GitHub Actions (`.github/workflows/ci.yml`)
+  - restores/builds .NET app
+  - validates Docker Compose build on push/PR
+- **Runtime diagnostics:** Docker logs + Serilog
+- **Operational checks:** `docker compose ps`, health status, curl probes
+
+## 8) Challenges and Resolutions
+
+- **Issue:** SQL Server container required more memory than small EC2 instance.
+- **Resolution:** Switched to Azure SQL Edge (lighter SQL Server-compatible image), added healthchecks, restart policies, and startup gating.
+- **Result:** Stable startup sequence and successful public access through frontend/API.
+
+## 9) Conclusion
+
+The project meets the required cloud development outcomes:
+
+- practical real-world functionality,
+- full CRUD backend with persistent database,
+- user-facing web interface and testable API,
+- Dockerized deployment,
+- public AWS hosting,
+- documented reliability/scalability strategy with implemented safeguards.
