@@ -410,7 +410,7 @@ async function loadAllPackages() {
         }
         renderPackagesTable(data);
     } catch {
-        tableBody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">${escapeHtml('Could not connect to the API. Check the base URL (try http://localhost:5001/api/packages with Docker Compose) and that the API is running.')}</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">${escapeHtml('Could not connect to the API. Check the base URL (production: http://13.53.67.121:5001/api/packages) and that the API is running.')}</td></tr>`;
     }
 }
 
